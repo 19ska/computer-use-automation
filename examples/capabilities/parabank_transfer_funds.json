@@ -1,0 +1,185 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "parabank.transfer_funds",
+  "capability_version": 1,
+  "display_name": "Transfer Funds (ParaBank)",
+  "description": "Transfer a specified amount from one ParaBank account to another and verify the transfer confirmation.",
+  "target_app": "https://parabank.parasoft.com/parabank",
+  "vendor_product": "ParaBank",
+  "session_requirement": {
+    "authenticated": true,
+    "auth_profile": "parabank_demo"
+  },
+  "inputs": [
+    {"name": "amount", "type": "decimal", "required": true, "description": "Amount to transfer.", "example": "20.00"},
+    {"name": "from_account_id", "type": "string", "required": true, "description": "Source account id.", "example": "16785"},
+    {"name": "to_account_id", "type": "string", "required": true, "description": "Destination account id.", "example": "16896"}
+  ],
+  "outputs": [
+    {
+      "name": "confirmation_message",
+      "type": "string",
+      "description": "Full visible confirmation text.",
+      "extraction": {
+        "target": {
+          "description": "Transfer confirmation panel",
+          "strategies": [
+            {"kind": "label_text", "text": "Transfer Complete!"},
+            {"kind": "css", "selector": "body"}
+          ]
+        },
+        "source": "text"
+      }
+    },
+    {
+      "name": "transferred_amount",
+      "type": "decimal",
+      "description": "Amount ParaBank reports as transferred.",
+      "extraction": {
+        "target": {
+          "description": "Transfer confirmation panel",
+          "strategies": [
+            {"kind": "label_text", "text": "Transfer Complete!"},
+            {"kind": "css", "selector": "body"}
+          ]
+        },
+        "source": "text",
+        "pattern": "^\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.$",
+        "capture_group": 1
+      }
+    },
+    {
+      "name": "from_account_id",
+      "type": "string",
+      "description": "Source account ParaBank reports.",
+      "extraction": {
+        "target": {
+          "description": "Transfer confirmation panel",
+          "strategies": [
+            {"kind": "label_text", "text": "Transfer Complete!"},
+            {"kind": "css", "selector": "body"}
+          ]
+        },
+        "source": "text",
+        "pattern": "^\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.$",
+        "capture_group": 2
+      }
+    },
+    {
+      "name": "to_account_id",
+      "type": "string",
+      "description": "Destination account ParaBank reports.",
+      "extraction": {
+        "target": {
+          "description": "Transfer confirmation panel",
+          "strategies": [
+            {"kind": "label_text", "text": "Transfer Complete!"},
+            {"kind": "css", "selector": "body"}
+          ]
+        },
+        "source": "text",
+        "pattern": "^\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.$",
+        "capture_group": 3
+      }
+    }
+  ],
+  "steps": [
+    {"step_id": 1, "action": "navigate", "url": "/transfer.htm"},
+    {
+      "step_id": 2,
+      "action": "select_option",
+      "target": {
+        "description": "From account dropdown",
+        "strategies": [
+          {"kind": "role", "role": "combobox", "name": "From Account"},
+          {"kind": "css", "selector": "#fromAccountId"}
+        ]
+      },
+      "value": {"kind": "param", "name": "from_account_id"}
+    },
+    {
+      "step_id": 3,
+      "action": "select_option",
+      "target": {
+        "description": "To account dropdown",
+        "strategies": [
+          {"kind": "role", "role": "combobox", "name": "To Account"},
+          {"kind": "css", "selector": "#toAccountId"}
+        ]
+      },
+      "value": {"kind": "param", "name": "to_account_id"}
+    },
+    {
+      "step_id": 4,
+      "action": "type",
+      "target": {
+        "description": "Amount field",
+        "strategies": [{"kind": "css", "selector": "#amount"}]
+      },
+      "value": {"kind": "param", "name": "amount"}
+    },
+    {
+      "step_id": 5,
+      "action": "click",
+      "target": {
+        "description": "Transfer submit button",
+        "strategies": [
+          {"kind": "role", "role": "button", "name": "Transfer"},
+          {"kind": "css", "selector": "input[value='Transfer']"}
+        ]
+      },
+      "retry": {"max_attempts": 2, "backoff_ms": 1500, "retry_on": ["timeout", "navigation_pending"]}
+    },
+    {
+      "step_id": 6,
+      "action": "wait_for",
+      "target": {
+        "description": "Transfer confirmation appears",
+        "strategies": [
+          {"kind": "label_text", "text": "Transfer Complete!"},
+          {"kind": "css", "selector": "body"}
+        ]
+      },
+      "retry": {"max_attempts": 3, "backoff_ms": 1000, "retry_on": ["timeout"]}
+    },
+    {"step_id": 7, "action": "extract", "output_ref": "confirmation_message"},
+    {"step_id": 8, "action": "extract", "output_ref": "transferred_amount"},
+    {"step_id": 9, "action": "extract", "output_ref": "from_account_id"},
+    {"step_id": 10, "action": "extract", "output_ref": "to_account_id"}
+  ],
+  "success_checkpoint": {
+    "description": "Transfer completed and confirmation shows amount, source, and destination.",
+    "assertion": "text_contains",
+    "expected_literal_text": ["Transfer Complete!"],
+    "expected_value_refs": [
+      {"kind": "param", "name": "amount"},
+      {"kind": "param", "name": "from_account_id"},
+      {"kind": "param", "name": "to_account_id"}
+    ]
+  },
+  "business_outcomes": [
+    {
+      "code": "INVALID_CREDENTIALS",
+      "description": "The configured auth_profile's credentials were rejected during session establishment.",
+      "origin": "session_establishment",
+      "target": {
+        "description": "Whole page (exact error-message container not yet isolated)",
+        "strategies": [{"kind": "css", "selector": "body"}],
+        "notes": "Verified against https://parabank.parasoft.com/parabank/index.htm: login fields are input[name='username'], input[name='password']; submit is input[type='submit'][value='Log In']. These confirm we are on the right page but are not used as functional locators here, since session establishment happens outside this artifact (see session_requirement)."
+      },
+      "contains_text": "The username and password could not be verified."
+    }
+  ],
+  "policy": {
+    "allowed_domains": ["parabank.parasoft.com"],
+    "allowed_actions": ["navigate", "click", "type", "select_option", "wait_for", "extract"],
+    "requires_approval": false,
+    "approval_threshold_param": "amount",
+    "approval_threshold_value": "500",
+    "data_classification": "internal"
+  },
+  "created_at": "2026-08-31T00:00:00Z",
+  "created_by": "human_edited",
+  "discovery_run_id": "manual/milestone2-fixture",
+  "notes": "No credentials are represented anywhere in this artifact. Session establishment (using session_requirement.auth_profile to look up real credentials at runtime) is a prerequisite the replay/discovery harness performs before invoking this capability's steps — not modeled as artifact steps."
+}

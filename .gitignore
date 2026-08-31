@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+
+# Env / secrets
+.env
+
+# Exploratory output — not final /evidence/
+scratch/
+
+# OS
+.DS_Store
+
+# Playwright
+node_modules/
+docs/assignment.pdf
