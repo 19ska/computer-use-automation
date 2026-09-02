@@ -1,0 +1,409 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "parabank.transfer_funds",
+  "capability_version": 1,
+  "display_name": "Transfer Funds (ParaBank)",
+  "description": "Transfer a specified amount from one ParaBank account to another and verify the transfer confirmation.",
+  "target_app": "https://parabank.parasoft.com/parabank",
+  "vendor_product": "ParaBank",
+  "session_requirement": {
+    "authenticated": true,
+    "auth_profile": "parabank_demo"
+  },
+  "inputs": [
+    {
+      "name": "amount",
+      "type": "decimal",
+      "required": true,
+      "description": "Amount to transfer.",
+      "example": "20.00",
+      "redact_in_logs": false
+    },
+    {
+      "name": "from_account_id",
+      "type": "string",
+      "required": true,
+      "description": "Source account id.",
+      "example": "16785",
+      "redact_in_logs": false
+    },
+    {
+      "name": "to_account_id",
+      "type": "string",
+      "required": true,
+      "description": "Destination account id.",
+      "example": "16896",
+      "redact_in_logs": false
+    }
+  ],
+  "outputs": [
+    {
+      "name": "confirmation_message",
+      "type": "string",
+      "description": "Full visible confirmation text.",
+      "extraction": {
+        "target": {
+          "description": "Transfer confirmation panel",
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "body"
+            }
+          ],
+          "notes": "Intentionally broad: matches the whole page body because a reliable narrower confirmation-container selector has not been identified. Safe here because extraction only runs after the wait_for step has already confirmed the confirmation state was reached using a state-specific locator."
+        },
+        "source": "text",
+        "attribute_name": null,
+        "pattern": null,
+        "capture_group": null
+      }
+    },
+    {
+      "name": "transferred_amount",
+      "type": "decimal",
+      "description": "Amount ParaBank reports as transferred.",
+      "extraction": {
+        "target": {
+          "description": "Transfer confirmation panel",
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "body"
+            }
+          ],
+          "notes": "Intentionally broad: matches the whole page body because a reliable narrower confirmation-container selector has not been identified. Safe here because extraction only runs after the wait_for step has already confirmed the confirmation state was reached using a state-specific locator."
+        },
+        "source": "text",
+        "attribute_name": null,
+        "pattern": "\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.",
+        "capture_group": 1
+      }
+    },
+    {
+      "name": "from_account_id",
+      "type": "string",
+      "description": "Source account ParaBank reports.",
+      "extraction": {
+        "target": {
+          "description": "Transfer confirmation panel",
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "body"
+            }
+          ],
+          "notes": "Intentionally broad: matches the whole page body because a reliable narrower confirmation-container selector has not been identified. Safe here because extraction only runs after the wait_for step has already confirmed the confirmation state was reached using a state-specific locator."
+        },
+        "source": "text",
+        "attribute_name": null,
+        "pattern": "\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.",
+        "capture_group": 2
+      }
+    },
+    {
+      "name": "to_account_id",
+      "type": "string",
+      "description": "Destination account ParaBank reports.",
+      "extraction": {
+        "target": {
+          "description": "Transfer confirmation panel",
+          "strategies": [
+            {
+              "kind": "css",
+              "selector": "body"
+            }
+          ],
+          "notes": "Intentionally broad: matches the whole page body because a reliable narrower confirmation-container selector has not been identified. Safe here because extraction only runs after the wait_for step has already confirmed the confirmation state was reached using a state-specific locator."
+        },
+        "source": "text",
+        "attribute_name": null,
+        "pattern": "\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.",
+        "capture_group": 3
+      }
+    }
+  ],
+  "steps": [
+    {
+      "step_id": 1,
+      "action": "click",
+      "target": {
+        "description": "Transfer Funds link",
+        "strategies": [
+          {
+            "kind": "role",
+            "role": "link",
+            "name": "Transfer Funds",
+            "exact": false
+          }
+        ],
+        "notes": null
+      },
+      "url": null,
+      "value": null,
+      "output_ref": null,
+      "checkpoint": null,
+      "retry": {
+        "max_attempts": 1,
+        "backoff_ms": 0,
+        "retry_on": []
+      },
+      "risk": "safe"
+    },
+    {
+      "step_id": 2,
+      "action": "select_option",
+      "target": {
+        "description": "From account dropdown",
+        "strategies": [
+          {
+            "kind": "css",
+            "selector": "#fromAccountId"
+          }
+        ],
+        "notes": null
+      },
+      "url": null,
+      "value": {
+        "kind": "param",
+        "name": "from_account_id"
+      },
+      "output_ref": null,
+      "checkpoint": null,
+      "retry": {
+        "max_attempts": 1,
+        "backoff_ms": 0,
+        "retry_on": []
+      },
+      "risk": "safe"
+    },
+    {
+      "step_id": 3,
+      "action": "select_option",
+      "target": {
+        "description": "To account dropdown",
+        "strategies": [
+          {
+            "kind": "css",
+            "selector": "#toAccountId"
+          }
+        ],
+        "notes": null
+      },
+      "url": null,
+      "value": {
+        "kind": "param",
+        "name": "to_account_id"
+      },
+      "output_ref": null,
+      "checkpoint": null,
+      "retry": {
+        "max_attempts": 1,
+        "backoff_ms": 0,
+        "retry_on": []
+      },
+      "risk": "safe"
+    },
+    {
+      "step_id": 4,
+      "action": "type",
+      "target": {
+        "description": "Amount text input",
+        "strategies": [
+          {
+            "kind": "css",
+            "selector": "#amount"
+          }
+        ],
+        "notes": null
+      },
+      "url": null,
+      "value": {
+        "kind": "param",
+        "name": "amount"
+      },
+      "output_ref": null,
+      "checkpoint": null,
+      "retry": {
+        "max_attempts": 1,
+        "backoff_ms": 0,
+        "retry_on": []
+      },
+      "risk": "safe"
+    },
+    {
+      "step_id": 5,
+      "action": "click",
+      "target": {
+        "description": "Transfer button",
+        "strategies": [
+          {
+            "kind": "role",
+            "role": "button",
+            "name": "Transfer",
+            "exact": false
+          }
+        ],
+        "notes": null
+      },
+      "url": null,
+      "value": null,
+      "output_ref": null,
+      "checkpoint": null,
+      "retry": {
+        "max_attempts": 1,
+        "backoff_ms": 0,
+        "retry_on": []
+      },
+      "risk": "risky"
+    },
+    {
+      "step_id": 6,
+      "action": "wait_for",
+      "target": {
+        "description": "Transfer confirmation appears",
+        "strategies": [
+          {
+            "kind": "label_text",
+            "text": "Transfer Complete!",
+            "exact": false
+          }
+        ],
+        "notes": "Deliberately no css:'body' fallback: body exists on every ParaBank page, including the pre-submission form itself, so it is not a valid signal that the confirmation state was actually reached."
+      },
+      "url": null,
+      "value": null,
+      "output_ref": null,
+      "checkpoint": null,
+      "retry": {
+        "max_attempts": 3,
+        "backoff_ms": 1000,
+        "retry_on": [
+          "timeout"
+        ]
+      },
+      "risk": "safe"
+    },
+    {
+      "step_id": 7,
+      "action": "extract",
+      "target": null,
+      "url": null,
+      "value": null,
+      "output_ref": "confirmation_message",
+      "checkpoint": null,
+      "retry": {
+        "max_attempts": 1,
+        "backoff_ms": 0,
+        "retry_on": []
+      },
+      "risk": "safe"
+    },
+    {
+      "step_id": 8,
+      "action": "extract",
+      "target": null,
+      "url": null,
+      "value": null,
+      "output_ref": "transferred_amount",
+      "checkpoint": null,
+      "retry": {
+        "max_attempts": 1,
+        "backoff_ms": 0,
+        "retry_on": []
+      },
+      "risk": "safe"
+    },
+    {
+      "step_id": 9,
+      "action": "extract",
+      "target": null,
+      "url": null,
+      "value": null,
+      "output_ref": "from_account_id",
+      "checkpoint": null,
+      "retry": {
+        "max_attempts": 1,
+        "backoff_ms": 0,
+        "retry_on": []
+      },
+      "risk": "safe"
+    },
+    {
+      "step_id": 10,
+      "action": "extract",
+      "target": null,
+      "url": null,
+      "value": null,
+      "output_ref": "to_account_id",
+      "checkpoint": null,
+      "retry": {
+        "max_attempts": 1,
+        "backoff_ms": 0,
+        "retry_on": []
+      },
+      "risk": "safe"
+    }
+  ],
+  "success_checkpoint": {
+    "description": "Transfer completed and confirmation shows amount, source, and destination.",
+    "assertion": "text_contains",
+    "target": null,
+    "expected_url_pattern": null,
+    "expected_literal_text": [
+      "Transfer Complete!"
+    ],
+    "expected_value_refs": [
+      {
+        "kind": "param",
+        "name": "amount"
+      },
+      {
+        "kind": "param",
+        "name": "from_account_id"
+      },
+      {
+        "kind": "param",
+        "name": "to_account_id"
+      }
+    ]
+  },
+  "business_outcomes": [
+    {
+      "code": "INVALID_CREDENTIALS",
+      "description": "The configured auth_profile's credentials were rejected during session establishment.",
+      "target": {
+        "description": "Whole page (exact error-message container not yet isolated)",
+        "strategies": [
+          {
+            "kind": "css",
+            "selector": "body"
+          }
+        ],
+        "notes": null
+      },
+      "contains_text": "The username and password could not be verified.",
+      "origin": "session_establishment"
+    }
+  ],
+  "policy": {
+    "allowed_domains": [
+      "parabank.parasoft.com"
+    ],
+    "allowed_actions": [
+      "navigate",
+      "click",
+      "type",
+      "select_option",
+      "wait_for",
+      "extract"
+    ],
+    "requires_approval": false,
+    "approval_threshold_param": "amount",
+    "approval_threshold_value": "500",
+    "data_classification": "internal"
+  },
+  "created_at": "2026-09-02T06:23:22.696164Z",
+  "created_by": "discovery_agent",
+  "discovery_run_id": "discovery-20260902T051912Z-d505f934",
+  "notes": "Compiled from discovery run discovery-20260902T051912Z-d505f934 (provider=groq, model=qwen/qwen3.6-27b)."
+}

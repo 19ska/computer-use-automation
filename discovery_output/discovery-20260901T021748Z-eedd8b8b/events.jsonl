@@ -1,2 +1,0 @@
-{"run_id": "discovery-20260901T021748Z-eedd8b8b", "timestamp": "2026-09-01T02:17:52.390872+00:00", "step_number": null, "action": "session_establish", "locator_strategy": null, "outcome": "attempted", "detail": null}
-{"run_id": "discovery-20260901T021748Z-eedd8b8b", "timestamp": "2026-09-01T02:17:52.412221+00:00", "step_number": null, "action": "session_establish", "locator_strategy": "a[href*='logout.htm']", "outcome": "authenticated", "detail": null}

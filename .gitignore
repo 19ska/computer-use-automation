@@ -13,6 +13,10 @@ dist/
 # Exploratory output — not final /evidence/
 scratch/
 
+# Milestone 4 discovery run output — development/debug runs, not final
+# /evidence/. Curated evidence lives in /evidence instead.
+discovery_output/
+
 # Milestone 3 replay run output — temporary, not final /evidence/
 run_output/
 
