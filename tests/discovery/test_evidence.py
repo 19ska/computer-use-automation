@@ -2,8 +2,8 @@
 
 import json
 
-from cua.artifact.schema import LiteralRef, ParamRef
-from cua.discovery.evidence import DiscoveryEvidenceWriter
+from cua.artifact.schema import CssLocator, LiteralRef, ParamRef, RoleLocator
+from cua.discovery.evidence import EVIDENCE_SCHEMA_VERSION, DiscoveryEvidenceWriter
 from cua.discovery.observation import build_observation
 
 
@@ -19,6 +19,7 @@ def test_record_step_writes_required_fields(tmp_path):
         accessible_name="Amount",
         value_source=ParamRef(name="amount"),
         resolved_locator_strategy="label_text#1",
+        resolved_locator=CssLocator(selector="#amount"),
         rationale="Entering the transfer amount.",
         outcome="ok",
         resulting_url="https://parabank.parasoft.com/parabank/transfer.htm",
@@ -28,15 +29,60 @@ def test_record_step_writes_required_fields(tmp_path):
     assert len(lines) == 1
     event = json.loads(lines[0])
     for key in (
-        "run_id", "timestamp", "step_number", "provider", "model", "action",
+        "evidence_schema_version", "run_id", "timestamp", "step_number", "provider", "model", "action",
         "target_description", "accessible_role", "accessible_name",
-        "value_source", "resolved_locator_strategy", "rationale",
+        "value_source", "resolved_locator_strategy", "resolved_locator", "url_path", "rationale",
         "outcome", "resulting_url", "observation_ref", "checkpoint_result",
     ):
         assert key in event
     assert event["value_source"] == {"kind": "param", "name": "amount"}
+    assert event["resolved_locator"] == {"kind": "css", "selector": "#amount"}
     assert event["provider"] == "gemini"
     assert event["model"] == "gemini-2.5-flash"
+    assert event["evidence_schema_version"] == EVIDENCE_SCHEMA_VERSION
+
+
+def test_record_step_resolved_locator_defaults_to_none(tmp_path):
+    evidence = DiscoveryEvidenceWriter(run_id="disc-loc-none", base_dir=tmp_path)
+    evidence.record_step(step_number=1, provider="gemini", model="m", action="click", outcome="failed")
+    event = json.loads(evidence.events_path.read_text().splitlines()[0])
+    assert event["resolved_locator"] is None
+
+
+def test_record_step_serializes_role_locator(tmp_path):
+    evidence = DiscoveryEvidenceWriter(run_id="disc-loc-role", base_dir=tmp_path)
+    evidence.record_step(
+        step_number=1, provider="groq", model="openai/gpt-oss-120b", action="click", outcome="ok",
+        resolved_locator=RoleLocator(role="button", name="Transfer"),
+    )
+    event = json.loads(evidence.events_path.read_text().splitlines()[0])
+    assert event["resolved_locator"] == {"kind": "role", "role": "button", "name": "Transfer", "exact": False}
+
+
+def test_record_step_never_persists_xpath_as_css():
+    """resolved_locator is only ever populated via resolve_artifact_locator,
+    which cannot produce a CssLocator whose selector starts with 'xpath=' —
+    this is a direct, structural assertion on that guarantee at the
+    serialization boundary."""
+    assert not CssLocator(selector="#amount").selector.startswith("xpath=")
+
+
+def test_record_step_captures_url_path_for_navigate(tmp_path):
+    evidence = DiscoveryEvidenceWriter(run_id="disc-nav", base_dir=tmp_path)
+    evidence.record_step(
+        step_number=1, provider="groq", model="openai/gpt-oss-120b", action="navigate",
+        outcome="ok", url_path="/transfer.htm", resulting_url="https://parabank.parasoft.com/parabank/transfer.htm",
+    )
+    event = json.loads(evidence.events_path.read_text().splitlines()[0])
+    assert event["url_path"] == "/transfer.htm"
+    assert event["resulting_url"] == "https://parabank.parasoft.com/parabank/transfer.htm"
+
+
+def test_record_step_url_path_defaults_to_none_for_non_navigate_actions(tmp_path):
+    evidence = DiscoveryEvidenceWriter(run_id="disc-nav-2", base_dir=tmp_path)
+    evidence.record_step(step_number=1, provider="gemini", model="m", action="click", outcome="ok")
+    event = json.loads(evidence.events_path.read_text().splitlines()[0])
+    assert event["url_path"] is None
 
 
 def test_record_step_saves_observation_when_provided(tmp_path):

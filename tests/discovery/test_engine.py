@@ -13,6 +13,9 @@ test_gemini_provider.py.
 
 from __future__ import annotations
 
+import json
+
+from cua.artifact.schema import RoleLocator
 from cua.discovery import engine
 from cua.discovery.evidence import DiscoveryEvidenceWriter
 from cua.discovery.executor import ExecutionOutcome
@@ -69,6 +72,47 @@ def _run(
     if return_provider:
         return result, provider, execute_action_fn
     return result
+
+
+def _events(tmp_path):
+    return [json.loads(line) for line in (tmp_path / "test-run" / "events.jsonl").read_text().splitlines()]
+
+
+def test_navigate_step_records_the_requested_url_path_in_evidence(tmp_path):
+    result = _run(
+        provider_script=[action_call("navigate", {"url_path": "/transfer.htm", "rationale": "go"})],
+        execute_action_script=[ExecutionOutcome(ok=True, resulting_url=f"{BASE_URL}/transfer.htm")],
+        max_steps=1,
+        tmp_path=tmp_path,
+    )
+    assert result.status == "failure"
+    assert result.failure_category == "max_steps_exceeded"
+    events = [e for e in _events(tmp_path) if e.get("action") == "navigate"]
+    assert len(events) == 1
+    assert events[0]["url_path"] == "/transfer.htm"
+    assert events[0]["resulting_url"] == f"{BASE_URL}/transfer.htm"
+
+
+def test_click_step_records_resolved_locator_in_evidence(tmp_path):
+    click_input = {
+        "target_description": "Transfer button", "accessible_role": "button",
+        "accessible_name": "Transfer", "rationale": "clicking",
+    }
+    resolved = RoleLocator(role="button", name="Transfer")
+    result = _run(
+        provider_script=[action_call("click", click_input)],
+        execute_action_script=[
+            ExecutionOutcome(ok=True, resolved_locator_strategy="role#0", resolved_locator=resolved)
+        ],
+        max_steps=1,
+        tmp_path=tmp_path,
+    )
+    assert result.status == "failure"
+    assert result.failure_category == "max_steps_exceeded"
+    events = [e for e in _events(tmp_path) if e.get("action") == "click"]
+    assert len(events) == 1
+    assert events[0]["resolved_locator"] == {"kind": "role", "role": "button", "name": "Transfer", "exact": False}
+    assert events[0]["url_path"] is None
 
 
 def test_session_business_outcome_short_circuits_before_any_llm_call(tmp_path):

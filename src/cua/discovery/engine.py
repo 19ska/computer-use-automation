@@ -425,6 +425,8 @@ def _run_against_page(
             accessible_name=args.get("accessible_name"),
             value_source=execution.value_source,
             resolved_locator_strategy=execution.resolved_locator_strategy,
+            resolved_locator=execution.resolved_locator,
+            url_path=args.get("url_path") if action == "navigate" else None,
             rationale=rationale,
             outcome="ok" if execution.ok else "failed",
             resulting_url=execution.resulting_url,

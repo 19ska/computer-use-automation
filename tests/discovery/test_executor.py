@@ -2,6 +2,7 @@
 fixtures as the replay test suite, since the executor resolves targets
 through the identical cua.replay.locators.resolve_target function."""
 
+from cua.artifact.schema import CssLocator, RoleLocator
 from cua.discovery.executor import execute_action
 from cua.discovery.target_resolution import _associated_control_xpath, _EDITABLE_TAGS, _SELECT_TAGS
 
@@ -35,6 +36,7 @@ def test_click_resolves_target_and_clicks():
     assert outcome.ok is True
     assert element.clicked is True
     assert outcome.resolved_locator_strategy == "role#0"
+    assert outcome.resolved_locator == RoleLocator(role="button", name="Transfer")
 
 
 def test_click_falls_back_to_label_text_and_is_unaffected_by_the_type_text_fix():
@@ -76,6 +78,7 @@ def test_type_text_resolves_via_role_when_available():
     assert outcome.value_source is not None
     assert outcome.value_source.kind == "param"
     assert outcome.value_source.name == "amount"
+    assert outcome.resolved_locator == RoleLocator(role="textbox", name="Amount")
 
 
 def test_type_text_never_fills_a_plain_label_text_node():
@@ -129,6 +132,85 @@ def test_type_text_falls_back_to_associated_editable_control_when_role_is_unavai
     )
     assert outcome.ok is True
     assert editable.filled_value == "20.00"
+
+
+def test_type_text_associated_control_fallback_compiles_to_id_based_css_never_xpath():
+    """The internal xpath= fallback that just made this action succeed
+    must never be persisted as the resolved_locator — it must be
+    normalized into a real, artifact-compatible CSS selector derived from
+    the resolved element's id.
+    """
+    page = FakePage()
+    editable = FakeElement(text="", tag_name="input", attributes={"id": "amount"})
+    selector = _associated_control_xpath("Amount", _EDITABLE_TAGS, contenteditable=True)
+    page.css_locators[selector] = FakeLocator([editable])
+
+    outcome = execute_action(
+        page,
+        "type_text",
+        {
+            "target_description": "Amount field",
+            "accessible_role": "textbox",
+            "accessible_name": "Amount",
+            "value": "20.00",
+        },
+        base_url=BASE_URL,
+        declared_params=DECLARED_PARAMS,
+    )
+    assert outcome.ok is True
+    assert outcome.resolved_locator == CssLocator(selector="#amount")
+    assert not outcome.resolved_locator.selector.startswith("xpath=")
+
+
+def test_select_option_associated_control_fallback_compiles_to_id_based_css():
+    page = FakePage()
+    select_element = FakeElement(text="", tag_name="select", attributes={"id": "fromAccountId"})
+    selector = _associated_control_xpath("From account #", _SELECT_TAGS)
+    page.css_locators[selector] = FakeLocator([select_element])
+
+    outcome = execute_action(
+        page,
+        "select_option",
+        {
+            "target_description": "From account dropdown",
+            "accessible_role": "combobox",
+            "accessible_name": "From account #",
+            "value": "15009",
+        },
+        base_url=BASE_URL,
+        declared_params=DECLARED_PARAMS,
+    )
+    assert outcome.ok is True
+    assert outcome.resolved_locator == CssLocator(selector="#fromAccountId")
+
+
+def test_associated_control_fallback_succeeds_even_when_no_artifact_locator_derivable():
+    """Execution succeeding and an artifact-compatible locator being
+    derivable are independent: an element with neither id nor name still
+    lets the live action succeed, it just leaves resolved_locator unset
+    for this step (a later compiler would fail closed on THAT run, not
+    this execution).
+    """
+    page = FakePage()
+    editable = FakeElement(text="", tag_name="input")  # no id, no name
+    selector = _associated_control_xpath("Amount", _EDITABLE_TAGS, contenteditable=True)
+    page.css_locators[selector] = FakeLocator([editable])
+
+    outcome = execute_action(
+        page,
+        "type_text",
+        {
+            "target_description": "Amount field",
+            "accessible_role": "textbox",
+            "accessible_name": "Amount",
+            "value": "20.00",
+        },
+        base_url=BASE_URL,
+        declared_params=DECLARED_PARAMS,
+    )
+    assert outcome.ok is True
+    assert editable.filled_value == "20.00"
+    assert outcome.resolved_locator is None
 
 
 def test_type_text_rejects_a_resolved_non_editable_element_before_calling_fill():

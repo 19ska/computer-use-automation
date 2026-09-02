@@ -19,15 +19,27 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from cua.artifact.schema import LiteralRef, ParamRef
+from cua.artifact.schema import LiteralRef, LocatorStrategy, ParamRef
 
 from .observation import Observation
+
+# Bumped only if the recorded event shape changes in a way that would
+# break a compiler consuming it — lets a future artifact compiler fail
+# closed on old evidence (e.g. runs predating resolved_locator/url_path)
+# with a clear version-mismatch error instead of silently misreading it.
+EVIDENCE_SCHEMA_VERSION = "1.0"
 
 
 def _value_source_to_dict(value_source: ParamRef | LiteralRef | None) -> dict[str, Any] | None:
     if value_source is None:
         return None
     return value_source.model_dump()
+
+
+def _locator_to_dict(locator: LocatorStrategy | None) -> dict[str, Any] | None:
+    if locator is None:
+        return None
+    return locator.model_dump()
 
 
 @dataclass
@@ -82,6 +94,8 @@ class DiscoveryEvidenceWriter:
         accessible_name: str | None = None,
         value_source: ParamRef | LiteralRef | None = None,
         resolved_locator_strategy: str | None = None,
+        resolved_locator: LocatorStrategy | None = None,
+        url_path: str | None = None,
         rationale: str | None = None,
         outcome: str,
         resulting_url: str | None = None,
@@ -96,6 +110,7 @@ class DiscoveryEvidenceWriter:
 
         self._append(
             {
+                "evidence_schema_version": EVIDENCE_SCHEMA_VERSION,
                 "run_id": self.run_id,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "step_number": step_number,
@@ -107,6 +122,8 @@ class DiscoveryEvidenceWriter:
                 "accessible_name": accessible_name,
                 "value_source": _value_source_to_dict(value_source),
                 "resolved_locator_strategy": resolved_locator_strategy,
+                "resolved_locator": _locator_to_dict(resolved_locator),
+                "url_path": url_path,
                 "rationale": rationale,
                 "outcome": outcome,
                 "resulting_url": resulting_url,

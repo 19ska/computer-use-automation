@@ -25,6 +25,7 @@ FailureCategory = Literal[
     "locator_ambiguous",
     "checkpoint_failed",
     "extraction_error",
+    "policy_violation",
     "unexpected_error",
 ]
 
@@ -61,6 +62,28 @@ class ReplayFailure(BaseModel):
     evidence_dir: str | None = None
 
 
+class ReplayInterventionOutcome(BaseModel):
+    """A human was asked to decide on a risky action and the run ended
+    without a confirmed completion — either they declined, or they said
+    "resume" but the expected post-condition wasn't actually observed on
+    the page. Deliberately NOT used for a successfully completed
+    human-assisted run: that case is indistinguishable in outcome from
+    full automation and returns an ordinary ReplaySuccess (the evidence
+    log, not the result model, is what proves a run was human-assisted —
+    see cua.replay.evidence's control_transition/manual_event/
+    intervention_* events).
+    """
+
+    status: Literal["intervention"] = "intervention"
+    run_id: str
+    capability_id: str
+    step_id: int
+    reason: str
+    decision: Literal["declined", "not_confirmed"]
+    evidence_dir: str | None = None
+
+
 ReplayResult = Annotated[
-    Union[ReplaySuccess, ReplayBusinessOutcome, ReplayFailure], Field(discriminator="status")
+    Union[ReplaySuccess, ReplayBusinessOutcome, ReplayFailure, ReplayInterventionOutcome],
+    Field(discriminator="status"),
 ]

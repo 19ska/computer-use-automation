@@ -13,16 +13,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from cua.artifact.schema import LiteralRef, ParamRef
-from cua.replay.locators import LocatorAmbiguousError, LocatorNotFoundError, SupportsPageProtocol, resolve_target
+from cua.artifact.schema import LiteralRef, LocatorStrategy, ParamRef
+from cua.replay.locators import (
+    LocatorAmbiguousError,
+    LocatorNotFoundError,
+    SupportsLocatorProtocol,
+    SupportsPageProtocol,
+    resolve_target,
+)
 
 from . import target_resolution
+from .resolved_locator import resolve_artifact_locator
 
 
 @dataclass
 class ExecutionOutcome:
     ok: bool
     resolved_locator_strategy: str | None = None
+    resolved_locator: LocatorStrategy | None = None
     value_source: ParamRef | LiteralRef | None = None
     resulting_url: str | None = None
     error: str | None = None
@@ -112,6 +120,7 @@ def execute_action(
         return ExecutionOutcome(
             ok=True,
             resolved_locator_strategy=resolution.strategy_description,
+            resolved_locator=resolve_artifact_locator(resolution),
             value_source=value_source,
             resulting_url=page.url,  # type: ignore[attr-defined]
         )

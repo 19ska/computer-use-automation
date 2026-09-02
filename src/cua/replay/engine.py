@@ -22,8 +22,10 @@ from cua.artifact.schema import CapabilityArtifact
 
 from . import checkpoints, executor, session
 from .evidence import ReplayEvidenceWriter
+from .executor import FirstEligibleStepOnceInjector
 from .inputs import InputValidationError, validate_inputs
-from .results import ReplayBusinessOutcome, ReplayFailure, ReplayResult, ReplaySuccess
+from .operator import OperatorInterface, TerminalOperator
+from .results import ReplayBusinessOutcome, ReplayFailure, ReplayInterventionOutcome, ReplayResult, ReplaySuccess
 
 
 def _generate_run_id(capability_id: str) -> str:
@@ -37,6 +39,8 @@ def run_replay(
     *,
     headless: bool = False,
     base_dir: Path = Path("run_output"),
+    operator: OperatorInterface | None = None,
+    inject_transient_once: bool = False,
 ) -> ReplayResult:
     # 1. Load + validate the artifact — no browser opened yet.
     try:
@@ -63,12 +67,17 @@ def run_replay(
         )
 
     evidence = ReplayEvidenceWriter(run_id=run_id, base_dir=base_dir)
+    operator = operator or TerminalOperator()
+    transient_injector = FirstEligibleStepOnceInjector() if inject_transient_once else None
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=headless)
         page = browser.new_page()
         try:
-            result = _run_against_page(page, artifact, resolved_inputs, run_id, evidence)
+            result = _run_against_page(
+                page, artifact, resolved_inputs, run_id, evidence,
+                operator=operator, transient_injector=transient_injector,
+            )
         except Exception as exc:  # noqa: BLE001 - last-resort safety net
             screenshot_path = _safe_screenshot(page, evidence, "unexpected_error")
             result = ReplayFailure(
@@ -91,6 +100,9 @@ def _run_against_page(
     resolved_inputs: dict[str, Any],
     run_id: str,
     evidence: ReplayEvidenceWriter,
+    *,
+    operator: OperatorInterface,
+    transient_injector: executor.TransientInjector | None,
 ) -> ReplayResult:
     session_result = session.establish_session(
         page,
@@ -121,7 +133,18 @@ def _run_against_page(
             evidence_dir=str(evidence.run_dir),
         )
 
-    outputs, step_failure = executor.run_steps(page, artifact, resolved_inputs, evidence)
+    outputs, step_failure, intervention = executor.run_steps(
+        page, artifact, resolved_inputs, evidence, operator=operator, transient_injector=transient_injector,
+    )
+    if intervention is not None:
+        return ReplayInterventionOutcome(
+            run_id=run_id,
+            capability_id=artifact.capability_id,
+            step_id=intervention.step_id,
+            reason=intervention.reason,
+            decision=intervention.decision,
+            evidence_dir=str(evidence.run_dir),
+        )
     if step_failure is not None:
         screenshot_path = _safe_screenshot(page, evidence, f"step_{step_failure.step_id}_failed")
         return ReplayFailure(

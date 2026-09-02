@@ -83,6 +83,10 @@ class FakePage:
         self.fill_calls: list[tuple[str, str]] = []
         self.click_calls: list[str] = []
         self.query_selector_result: object | None = None
+        self.exposed_functions: dict[str, object] = {}
+        self.evaluate_calls: list[str] = []
+        self.evaluate_error: Exception | None = None
+        self.screenshot_calls: list[str] = []
 
     # -- locator resolution surface --
     def get_by_role(self, role: str, *, name: str, exact: bool = False) -> FakeLocator:
@@ -115,6 +119,15 @@ class FakePage:
         self.wait_for_timeout_calls.append(ms)
 
     def screenshot(self, path: str, full_page: bool = True) -> None:
+        self.screenshot_calls.append(path)
+
+    def expose_function(self, name: str, callback: object) -> None:
+        self.exposed_functions[name] = callback
+
+    def evaluate(self, expression: str) -> object:
+        self.evaluate_calls.append(expression)
+        if self.evaluate_error is not None:
+            raise self.evaluate_error
         return None
 
     # -- raw (non-Locator) login-form surface used by session.py --

@@ -16,6 +16,9 @@ scratch/
 # Milestone 3 replay run output — temporary, not final /evidence/
 run_output/
 
+# Milestone 5 compiler output — generated, not hand-authored
+generated_capabilities/
+
 # OS
 .DS_Store
 
