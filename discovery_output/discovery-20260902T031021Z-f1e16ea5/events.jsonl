@@ -1,0 +1,2 @@
+{"run_id": "discovery-20260902T031021Z-f1e16ea5", "timestamp": "2026-09-02T03:10:23.308273+00:00", "step_number": null, "action": "session_establish", "locator_strategy": null, "outcome": "attempted", "detail": null}
+{"run_id": "discovery-20260902T031021Z-f1e16ea5", "timestamp": "2026-09-02T03:10:23.335171+00:00", "step_number": null, "action": "session_establish", "locator_strategy": "css#0", "outcome": "business_outcome", "detail": "INVALID_CREDENTIALS"}

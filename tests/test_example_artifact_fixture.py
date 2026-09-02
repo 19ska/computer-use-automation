@@ -9,7 +9,7 @@ import json
 import re
 from pathlib import Path
 
-from cua.artifact import CapabilityArtifact, LiteralRef
+from cua.artifact import CapabilityArtifact, CssLocator, LiteralRef
 
 FIXTURE_PATH = (
     Path(__file__).resolve().parent.parent
@@ -73,22 +73,59 @@ def test_fixture_output_extraction_patterns_compile_and_capture_groups_in_range(
             assert 0 <= spec.capture_group <= compiled.groups
 
 
-def test_fixture_confirmation_pattern_parses_the_observed_message():
-    """Sanity-checks the fixture's regex against the ACTUAL message observed
-    during Milestone 1 — proves the pattern is not just syntactically valid
-    but would really parse real ParaBank output. This does not exercise
-    any replay code; the assertions below ARE the check.
+def test_fixture_confirmation_pattern_parses_the_observed_message_inside_a_larger_page():
+    """Sanity-checks the fixture's regex against the ACTUAL confirmation
+    sentence, EMBEDDED inside a much larger body of surrounding page text
+    (nav links, headings, footer) — matching the real shape of
+    `page.inner_text("body")` on the live confirmation page, not an
+    isolated sentence in a vacuum.
+
+    This is a regression test for the Milestone 3 bug where the fixture's
+    pattern was anchored with ^/$, which can only match when the ENTIRE
+    body equals the sentence — never true on a real page with a header,
+    nav, and footer around it. `re.search` (not `re.match`) is used here
+    because replay itself uses `re.search`.
     """
     artifact = _load()
     by_name = {o.name: o for o in artifact.outputs}
     pattern = by_name["transferred_amount"].extraction.pattern
-    observed = (
-        "$999999999.00 has been transferred from account #16785 "
-        "to account #16896."
+
+    noisy_body = (
+        "Experience the difference\n"
+        "Solutions About Us Services Products Locations Admin Page\n"
+        "Welcome Some User\n"
+        "Transfer Complete!\n"
+        "$999999999.00 has been transferred from account #16785 to account #16896.\n"
+        "Home About Us Services Products Locations Forum Site Map Contact Us\n"
+        "© Parasoft. All rights reserved."
     )
 
-    match = re.match(pattern, observed)
+    match = re.search(pattern, noisy_body)
     assert match is not None
     assert match.group(by_name["transferred_amount"].extraction.capture_group) == "999999999.00"
     assert match.group(by_name["from_account_id"].extraction.capture_group) == "16785"
     assert match.group(by_name["to_account_id"].extraction.capture_group) == "16896"
+
+
+def test_fixture_wait_for_target_has_no_universal_body_fallback():
+    """Regression test for the Milestone 3 bug: the wait_for step's target
+    must not include a css:'body' strategy. body exists on every ParaBank
+    page — including the pre-submission Transfer Funds form — so it is
+    never a valid signal that the confirmation state was actually reached.
+    If this test starts failing, someone re-added a universal fallback
+    that will make the wait step succeed instantly and incorrectly.
+    """
+    artifact = _load()
+    wait_steps = [s for s in artifact.steps if s.action == "wait_for"]
+    assert wait_steps, "expected at least one wait_for step in this fixture"
+
+    for step in wait_steps:
+        body_fallbacks = [
+            s
+            for s in step.target.strategies
+            if isinstance(s, CssLocator) and s.selector.strip().lower() == "body"
+        ]
+        assert body_fallbacks == [], (
+            f"wait_for step {step.step_id} must not use a css:'body' strategy: "
+            f"{step.target.strategies}"
+        )

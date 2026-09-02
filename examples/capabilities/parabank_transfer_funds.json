@@ -24,9 +24,9 @@
         "target": {
           "description": "Transfer confirmation panel",
           "strategies": [
-            {"kind": "label_text", "text": "Transfer Complete!"},
             {"kind": "css", "selector": "body"}
-          ]
+          ],
+          "notes": "Intentionally broad: this matches the whole page body because a reliable narrower confirmation-container selector has not been identified yet. A label_text match on \"Transfer Complete!\" would resolve only to the heading, not the sentence with the amount and account numbers regex extraction needs. This is safe HERE (unlike using body as a wait_for fallback) because extraction only runs after step 6's wait_for has already confirmed the real confirmation state was reached using a state-specific locator (label_text \"Transfer Complete!\", no body fallback) — by the time extraction runs, body legitimately contains the confirmation sentence. The pattern below is intentionally unanchored (no ^/$) so it finds the sentence anywhere inside the larger body text rather than requiring the whole body to equal it. Tighten the target to the exact confirmation container once a Milestone 4+ discovery run identifies a reliable one."
         },
         "source": "text"
       }
@@ -39,12 +39,12 @@
         "target": {
           "description": "Transfer confirmation panel",
           "strategies": [
-            {"kind": "label_text", "text": "Transfer Complete!"},
             {"kind": "css", "selector": "body"}
-          ]
+          ],
+          "notes": "Intentionally broad: this matches the whole page body because a reliable narrower confirmation-container selector has not been identified yet. A label_text match on \"Transfer Complete!\" would resolve only to the heading, not the sentence with the amount and account numbers regex extraction needs. This is safe HERE (unlike using body as a wait_for fallback) because extraction only runs after step 6's wait_for has already confirmed the real confirmation state was reached using a state-specific locator (label_text \"Transfer Complete!\", no body fallback) — by the time extraction runs, body legitimately contains the confirmation sentence. The pattern below is intentionally unanchored (no ^/$) so it finds the sentence anywhere inside the larger body text rather than requiring the whole body to equal it. Tighten the target to the exact confirmation container once a Milestone 4+ discovery run identifies a reliable one."
         },
         "source": "text",
-        "pattern": "^\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.$",
+        "pattern": "\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.",
         "capture_group": 1
       }
     },
@@ -56,12 +56,12 @@
         "target": {
           "description": "Transfer confirmation panel",
           "strategies": [
-            {"kind": "label_text", "text": "Transfer Complete!"},
             {"kind": "css", "selector": "body"}
-          ]
+          ],
+          "notes": "Intentionally broad: this matches the whole page body because a reliable narrower confirmation-container selector has not been identified yet. A label_text match on \"Transfer Complete!\" would resolve only to the heading, not the sentence with the amount and account numbers regex extraction needs. This is safe HERE (unlike using body as a wait_for fallback) because extraction only runs after step 6's wait_for has already confirmed the real confirmation state was reached using a state-specific locator (label_text \"Transfer Complete!\", no body fallback) — by the time extraction runs, body legitimately contains the confirmation sentence. The pattern below is intentionally unanchored (no ^/$) so it finds the sentence anywhere inside the larger body text rather than requiring the whole body to equal it. Tighten the target to the exact confirmation container once a Milestone 4+ discovery run identifies a reliable one."
         },
         "source": "text",
-        "pattern": "^\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.$",
+        "pattern": "\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.",
         "capture_group": 2
       }
     },
@@ -73,12 +73,12 @@
         "target": {
           "description": "Transfer confirmation panel",
           "strategies": [
-            {"kind": "label_text", "text": "Transfer Complete!"},
             {"kind": "css", "selector": "body"}
-          ]
+          ],
+          "notes": "Intentionally broad: this matches the whole page body because a reliable narrower confirmation-container selector has not been identified yet. A label_text match on \"Transfer Complete!\" would resolve only to the heading, not the sentence with the amount and account numbers regex extraction needs. This is safe HERE (unlike using body as a wait_for fallback) because extraction only runs after step 6's wait_for has already confirmed the real confirmation state was reached using a state-specific locator (label_text \"Transfer Complete!\", no body fallback) — by the time extraction runs, body legitimately contains the confirmation sentence. The pattern below is intentionally unanchored (no ^/$) so it finds the sentence anywhere inside the larger body text rather than requiring the whole body to equal it. Tighten the target to the exact confirmation container once a Milestone 4+ discovery run identifies a reliable one."
         },
         "source": "text",
-        "pattern": "^\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.$",
+        "pattern": "\\$([0-9,]+\\.\\d{2}) has been transferred from account #(\\d+) to account #(\\d+)\\.",
         "capture_group": 3
       }
     }
@@ -136,9 +136,9 @@
       "target": {
         "description": "Transfer confirmation appears",
         "strategies": [
-          {"kind": "label_text", "text": "Transfer Complete!"},
-          {"kind": "css", "selector": "body"}
-        ]
+          {"kind": "label_text", "text": "Transfer Complete!"}
+        ],
+        "notes": "Deliberately no css:'body' fallback here. body exists on every ParaBank page, including the pre-submission Transfer Funds form itself, so it is not a valid signal that the confirmation state was actually reached. A wait_for step's target must uniquely identify the state being waited for; if the confirmation text isn't visible yet, this should fail (and be retried per the step's RetryPolicy), not silently succeed."
       },
       "retry": {"max_attempts": 3, "backoff_ms": 1000, "retry_on": ["timeout"]}
     },

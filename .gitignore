@@ -13,6 +13,9 @@ dist/
 # Exploratory output — not final /evidence/
 scratch/
 
+# Milestone 3 replay run output — temporary, not final /evidence/
+run_output/
+
 # OS
 .DS_Store
 
